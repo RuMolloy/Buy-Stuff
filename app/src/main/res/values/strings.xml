@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Buy Stuff</string>
+<!--    <string name="admob_id_app_prod">ca-app-pub-5210536419663875~4229095830</string>-->
+    <string name="admob_id_app">ca-app-pub-3940256099942544~3347511713</string>
+    <string name="admob_id_unit">ca-app-pub-3940256099942544/6300978111</string>
+    <string name="product_id_01">random_product_01</string>
+    <string name="product_id_02">random_product_02</string>
+    <string name="product_id_03">random_product_03</string>
+    <string name="product_consumable">consumable_product_01</string>
+    <string name="product_non_consumable">non_consumable_product_01</string>
+</resources>
