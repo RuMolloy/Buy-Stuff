@@ -1,8 +1,11 @@
 package com.molloyruaidhri.buystuff
 
+import android.content.Context
+import android.content.SharedPreferences
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.Toast
 import com.android.billingclient.api.*
 import com.android.volley.Request
@@ -20,6 +23,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var billingClient: BillingClient
 
+    private lateinit var sharedPref: SharedPreferences
+
     companion object {
         const val TAG = "Debug"
     }
@@ -36,6 +41,8 @@ class MainActivity : AppCompatActivity() {
                 purchasesUpdated(billingResult, list)
             }
             .build()
+
+        sharedPref = getPreferences(Context.MODE_PRIVATE)
 
         setUpAds()
 
@@ -62,8 +69,33 @@ class MainActivity : AppCompatActivity() {
 
     private fun queryPurchases() {
         billingClient.queryPurchasesAsync(BillingClient.SkuType.INAPP) { billingResult, list ->
-            purchasesUpdated(billingResult, list)
+            when {
+                list.isNullOrEmpty() -> {
+                    initNonConsumableProduct()
+                }
+                else -> {
+                    purchasesUpdated(billingResult, list)
+                }
+            }
         }
+        billingClient.queryPurchasesAsync(BillingClient.SkuType.SUBS) { billingResult, list ->
+            when {
+                list.isNullOrEmpty() -> {
+                    initSubscriptionProduct()
+                }
+                else -> {
+                    purchasesUpdated(billingResult, list)
+                }
+            }
+        }
+    }
+
+    private fun initNonConsumableProduct() {
+        updateProductState(getString(R.string.product_non_consumable), false)
+    }
+
+    private fun initSubscriptionProduct() {
+        updateProductState(getString(R.string.product_subscription), false)
     }
 
     private fun setUpAds() {
@@ -83,19 +115,17 @@ class MainActivity : AppCompatActivity() {
         if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
             if(!list.isNullOrEmpty()){
                 for (purchase in list) {
-                    if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
-                        if (purchase.isAcknowledged) {
-                            if(isNonConsumableProduct(getProductId(purchase))) {
-                                setNonConsumableProductEnabledState(false)
-                            }
-                        }
-                        else{
-                            verifyPurchase(purchase)
+                    when {
+                        isNonConsumableProduct(getProductId(purchase)) -> {
+                            val productId = getProductId(purchase)
+                            updateProductState(productId, purchase.isAcknowledged)
                         }
                     }
+                    if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED  &&
+                            !purchase.isAcknowledged) {
+                        verifyPurchase(purchase)
+                    }
                 }
-            } else {
-                setNonConsumableProductEnabledState(true)
             }
         }
     }
@@ -105,7 +135,8 @@ class MainActivity : AppCompatActivity() {
             override fun onBillingSetupFinished(billingResult: BillingResult) {
                 if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
                     // The BillingClient is ready. You can query purchases here.
-                    getProductDetails()
+                    getInAppProductDetails()
+                    getSubsProductDetails()
                     queryPurchases()
                 }
             }
@@ -118,7 +149,7 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    private fun getProductDetails() {
+    private fun getInAppProductDetails() {
         val listOfProductIds =
             listOf(getString(R.string.product_consumable),
                 getString(R.string.product_non_consumable))
@@ -153,6 +184,34 @@ class MainActivity : AppCompatActivity() {
                     billingClient.launchBillingFlow(
                         activity,
                         BillingFlowParams.newBuilder().setSkuDetails(productTwo).build()
+                    )
+                }
+            }
+        }
+    }
+
+    private fun getSubsProductDetails() {
+        val listOfProductIds =
+            listOf(getString(R.string.product_subscription))
+        val productDetailsQuery = SkuDetailsParams.newBuilder()
+            .setSkusList(listOfProductIds)
+            .setType(BillingClient.SkuType.SUBS)
+            .build()
+        val activity = this
+
+        billingClient.querySkuDetailsAsync(
+            productDetailsQuery
+        ) { billingResult, list ->
+            if (billingResult.responseCode == BillingClient.BillingResponseCode.OK && list != null) {
+                val productThree: SkuDetails = list[0]
+                activity.runOnUiThread {
+                    binding.tvSubscriptionProduct.text = productThree.title
+                    binding.btnSubscriptionProduct.text = productThree.price
+                }
+                binding.btnSubscriptionProduct.setOnClickListener {
+                    billingClient.launchBillingFlow(
+                        activity,
+                        BillingFlowParams.newBuilder().setSkuDetails(productThree).build()
                     )
                 }
             }
@@ -194,14 +253,35 @@ class MainActivity : AppCompatActivity() {
         return purchaseInfoFromServer.getString("productId")
     }
 
-    private fun setNonConsumableProductEnabledState(isEnabled: Boolean) {
+    private fun setNonConsumableProductEnabledState(productId: String) {
         runOnUiThread {
-            binding.btnNonConsumableProduct.isEnabled = isEnabled
+            val isPurchased = getProductStateInSharedPref(productId)
+            when (productId) {
+                getString(R.string.product_non_consumable) -> {
+                    binding.btnNonConsumableProduct.isEnabled = !isPurchased
+                }
+                getString(R.string.product_subscription) -> {
+                    if(isPurchased) {
+                        binding.btnSubscriptionProduct.isEnabled = false
+                        binding.ivBasicContent.visibility = View.GONE
+                        binding.ivPremiumContent.visibility = View.VISIBLE
+                    }
+                    else{
+                        binding.btnSubscriptionProduct.isEnabled = true
+                        binding.ivBasicContent.visibility = View.VISIBLE
+                        binding.ivPremiumContent.visibility = View.GONE
+                    }
+                }
+                else -> {
+                    Log.d(TAG, "Product ID $productId not found!")
+                }
+            }
         }
     }
 
     private fun isNonConsumableProduct(productId: String): Boolean {
         return productId == getString(R.string.product_non_consumable)
+                || productId == getString(R.string.product_subscription)
     }
 
     private fun ackNonConsumableProduct(purchase: Purchase) {
@@ -209,10 +289,12 @@ class MainActivity : AppCompatActivity() {
         billingClient.acknowledgePurchase(ack
         ) { billingResult ->
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                Log.d(TAG, "Non-consumable product purchased acknowledged!")
+                val msg = "Non-consumable product purchase acknowledged!"
+                Log.d(TAG, msg)
                 runOnUiThread {
-                    setNonConsumableProductEnabledState(false)
-                    Toast.makeText(this, "Non-consumable product purchased acknowledged!", Toast.LENGTH_LONG).show()
+                    val productId = getProductId(purchase)
+                    updateProductState(productId, true)
+                    Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -221,13 +303,30 @@ class MainActivity : AppCompatActivity() {
     private fun ackConsumableProduct(purchase: Purchase) {
         val consumeParams = ConsumeParams.newBuilder().setPurchaseToken(purchase.purchaseToken).build()
         billingClient.consumeAsync(consumeParams
-        ) { billingResult, str ->
+        ) { billingResult, _ ->
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                Log.d(TAG, "Non-consumable product purchased consumed!")
+                val msg = "Non-consumable product purchase consumed!"
+                Log.d(TAG, msg)
                 runOnUiThread {
-                    Toast.makeText(this, "Non-consumable product purchased consumed!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
                 }
             }
         }
+    }
+
+    private fun updateProductState(productId: String, isAcknowledged: Boolean) {
+        setProductStateInSharedPref(productId, isAcknowledged)
+        setNonConsumableProductEnabledState(productId)
+    }
+
+    private fun setProductStateInSharedPref(productId: String, isAcknowledged: Boolean) {
+        with (sharedPref.edit()) {
+            putBoolean(productId, isAcknowledged)
+            apply()
+        }
+    }
+
+    private fun getProductStateInSharedPref(productName: String): Boolean {
+        return sharedPref.getBoolean(productName, false)
     }
 }

@@ -54,6 +54,47 @@
 
     </LinearLayout>
 
+    <LinearLayout
+        android:id="@+id/ll_three"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/ll_two">
+
+        <TextView
+            android:id="@+id/tv_subscription_product"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Product three"/>
+
+        <Button
+            android:id="@+id/btn_subscription_product"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Buy me"/>
+
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/iv_basic_content"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="visible"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/ll_three"
+        android:src="@drawable/premium_content_black_and_white"/>
+
+    <ImageView
+        android:id="@+id/iv_premium_content"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/ll_three"
+        android:src="@drawable/premium_content_colour"/>
+
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

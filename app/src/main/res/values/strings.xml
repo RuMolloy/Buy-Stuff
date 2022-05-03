@@ -8,4 +8,7 @@
     <string name="product_id_03">random_product_03</string>
     <string name="product_consumable">consumable_product_01</string>
     <string name="product_non_consumable">non_consumable_product_01</string>
+    <string name="product_subscription">subscription_product_01</string>
+    <string name="shared_pref_non_consumable_product_01">hasNonConsumableProduct01</string>
+    <string name="shared_pref_subscription_product_01">hasSubscriptionProduct01</string>
 </resources>
