@@ -3,6 +3,9 @@ Demo app to experiment with Google Play's billing system and app monetization.
 
 The demo shows purchasing of consumable (can be purchased multiple times), non-consumable (can only be purchased once) in-app products and a subscription product. Admob is also integrated where a test ad appears on the bottom of the screen (see static screenshot below).
 
+## Prerequisite
+Requirement to have the app you're looking to add billing to released on the Play Store (internal release is fine..)
+
 ## Demo
 #### Note 
 Admob test ad seems to work intermittently at best with *Ad failed to load error code 0* returned in the console, seems to be a server side issue
